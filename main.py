@@ -1154,6 +1154,58 @@ def _reload_runtime_config() -> Config:
     return get_config()
 
 
+def _update_stock_list_from_eastmoney():
+    """从东方财富获取自选股并保存到 .env"""
+    import requests
+    import os
+
+    apikey = os.getenv("MX_APIKEY", "")
+    if not apikey:
+        logger.warning("[东方财富] MX_APIKEY 未配置，跳过自选股更新")
+        return
+
+    try:
+        logger.info("[东方财富] 正在获取自选股...")
+        response = requests.post(
+            "https://mkapi2.dfcfs.com/finskillshub/api/claw/self-select/get",
+            headers={"Content-Type": "application/json", "apikey": apikey},
+            json={},
+            timeout=30,
+        )
+        response.raise_for_status()
+        result = response.json()
+    except Exception as e:
+        logger.error(f"[东方财富] 获取自选股失败: {e}")
+        return
+
+    if result.get("status") != 0 and result.get("code") != 0:
+        logger.error(f"[东方财富] API 返回错误: {result.get('message', '未知错误')}")
+        return
+
+    data = result.get("data", {})
+    all_results = data.get("allResults", {})
+    result_data = all_results.get("result", {})
+    data_list = result_data.get("dataList", [])
+
+    codes = [stock.get("SECURITY_CODE", "") for stock in data_list if stock.get("SECURITY_CODE")]
+    if not codes:
+        logger.warning("[东方财富] 自选股列表为空")
+        return
+
+    stock_list_str = ",".join(codes)
+    logger.info(f"[东方财富] 获取到 {len(codes)} 只自选股")
+
+    # 更新 .env 文件中的 STOCK_LIST
+    from src.services.system_config_service import SystemConfigService
+    service = SystemConfigService()
+    current_version = service._manager.get_config_version()
+    service.update(
+        config_version=current_version,
+        items=[{"key": "STOCK_LIST", "value": stock_list_str}],
+    )
+    logger.info("[东方财富] 自选股已保存到 STOCK_LIST")
+
+
 def _build_schedule_time_provider(default_schedule_time: str):
     """Read the latest schedule time directly from the active config file.
 
@@ -1454,6 +1506,9 @@ def main() -> int:
 
             def scheduled_task():
                 runtime_config = _reload_runtime_config()
+                # 从东方财富获取自选股
+                if getattr(runtime_config, 'schedule_stock_list_from_eastmoney', False):
+                    _update_stock_list_from_eastmoney()
                 run_full_analysis(runtime_config, args, scheduled_stock_codes)
 
             background_tasks = []

@@ -51,4 +51,14 @@ export const stocksApi = {
     }
     throw new Error('请提供文件或粘贴文本');
   },
+
+  async importFromEastmoney(): Promise<ExtractFromImageResponse> {
+    const response = await apiClient.post('/api/v1/stocks/import-from-eastmoney');
+    const data = response.data as { codes?: string[]; items?: ExtractItem[]; raw_text?: string };
+    return {
+      codes: data.codes ?? [],
+      items: data.items,
+      rawText: data.raw_text,
+    };
+  },
 };

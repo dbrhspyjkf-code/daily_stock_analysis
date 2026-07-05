@@ -948,6 +948,7 @@ class Config:
     schedule_time: str = "18:00"              # 每日推送时间（HH:MM 格式）
     schedule_times: List[str] = field(default_factory=lambda: ["18:00"])
     schedule_run_immediately: bool = True     # 启动时是否立即执行一次
+    schedule_stock_list_from_eastmoney: bool = False  # 定时任务前从东方财富获取自选股
     run_immediately: bool = True              # 启动时是否立即执行一次（非定时模式）
     market_review_enabled: bool = True        # 是否启用大盘复盘
     daily_market_context_enabled: bool = True   # 是否将大盘环境摘要用于个股分析 Prompt 与保守护栏
@@ -1064,6 +1065,7 @@ class Config:
             "SCHEDULE_TIME",
             "SCHEDULE_TIMES",
             "SCHEDULE_RUN_IMMEDIATELY",
+            "SCHEDULE_STOCK_LIST_FROM_EASTMONEY",
         }
     )
     _BOOTSTRAP_RUNTIME_ENV_OVERRIDES_CAPTURED = False
@@ -1491,6 +1493,15 @@ class Config:
             prefer_env_file=True,
         )
 
+        schedule_stock_list_from_eastmoney_env = cls._resolve_env_value(
+            'SCHEDULE_STOCK_LIST_FROM_EASTMONEY',
+            prefer_env_file=True,
+        )
+        schedule_stock_list_from_eastmoney = (
+            schedule_stock_list_from_eastmoney_env.lower() == 'true'
+            if schedule_stock_list_from_eastmoney_env is not None
+            else False
+        )
         report_language_raw = cls._resolve_report_language_env_value(
             preexisting_report_language
         )
@@ -1815,6 +1826,7 @@ class Config:
                 fallback_time=(schedule_time_value or '18:00').strip() or '18:00',
             ),
             schedule_run_immediately=schedule_run_immediately,
+            schedule_stock_list_from_eastmoney=schedule_stock_list_from_eastmoney,
             run_immediately=legacy_run_immediately,
             market_review_enabled=os.getenv('MARKET_REVIEW_ENABLED', 'true').lower() == 'true',
             daily_market_context_enabled=os.getenv('DAILY_MARKET_CONTEXT_ENABLED', 'true').lower() == 'true',

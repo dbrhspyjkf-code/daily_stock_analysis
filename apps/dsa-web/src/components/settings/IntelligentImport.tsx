@@ -175,6 +175,28 @@ export const IntelligentImport: React.FC<IntelligentImportProps> = ({
     [addItems, t],
   );
 
+  const handleEastmoneyImport = useCallback(async () => {
+    setError(null);
+    setIsLoading(true);
+    try {
+      const res = await stocksApi.importFromEastmoney();
+      const items: ExtractItem[] = (res.items ?? []).map((s) => ({
+        code: s.code ?? null,
+        name: s.name ?? null,
+        confidence: (s as ExtractItem).confidence ?? 'high',
+      }));
+      if (items.length === 0) {
+        setError('东方财富自选股为空，请先在东方财富App中添加自选股');
+      } else {
+        addItems(items);
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : '导入失败，请检查 MX_APIKEY 配置');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [addItems]);
+
   const handlePasteParse = useCallback(() => {
     const trimmedText = pasteText.trim();
     if (!trimmedText) return;
@@ -342,6 +364,14 @@ export const IntelligentImport: React.FC<IntelligentImportProps> = ({
             onChange={onDataFileInput}
             disabled={disabled || isLoading}
           />
+          <Button
+            type="button"
+            variant="settings-secondary"
+            disabled={disabled || isLoading}
+            onClick={() => void handleEastmoneyImport()}
+          >
+            从东方财富导入
+          </Button>
         </div>
         <div className="flex flex-col gap-2 sm:flex-row">
           <textarea

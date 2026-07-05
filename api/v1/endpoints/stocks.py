@@ -12,6 +12,7 @@
 """
 
 import logging
+import os
 from typing import Optional
 import re
 
@@ -310,6 +311,71 @@ async def parse_import(request: Request) -> ExtractFromImageResponse:
     ]
     codes = list(dict.fromkeys(i.code for i in extract_items if i.code))
     return ExtractFromImageResponse(codes=codes, items=extract_items, raw_text=None)
+
+
+@router.post(
+    "/import-from-eastmoney",
+    response_model=ExtractFromImageResponse,
+    responses={
+        200: {"description": "东方财富自选股导入结果"},
+        400: {"description": "未配置 MX_API_KEY"},
+        500: {"description": "服务器错误", "model": ErrorResponse},
+    },
+    summary="从东方财富导入自选股",
+    description="调用东方财富妙想 API 获取用户自选股列表",
+)
+def import_from_eastmoney() -> ExtractFromImageResponse:
+    """
+    从东方财富导入用户自选股
+
+    需要环境变量 MX_APIKEY 配置
+    """
+    import requests
+
+    apikey = os.getenv("MX_APIKEY", "")
+    if not apikey:
+        raise HTTPException(
+            status_code=400,
+            detail={"error": "not_configured", "message": "请先配置 MX_APIKEY 环境变量"},
+        )
+
+    try:
+        response = requests.post(
+            "https://mkapi2.dfcfs.com/finskillshub/api/claw/self-select/get",
+            headers={"Content-Type": "application/json", "apikey": apikey},
+            json={},
+            timeout=30,
+        )
+        response.raise_for_status()
+        result = response.json()
+    except Exception as e:
+        logger.error(f"东方财富自选股接口调用失败: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail={"error": "api_error", "message": f"调用东方财富 API 失败: {str(e)}"},
+        )
+
+    if result.get("status") != 0 and result.get("code") != 0:
+        msg = result.get("message", "未知错误")
+        raise HTTPException(
+            status_code=400,
+            detail={"error": "api_error", "message": f"东方财富返回错误: {msg}"},
+        )
+
+    data = result.get("data", {})
+    all_results = data.get("allResults", {})
+    result_data = all_results.get("result", {})
+    data_list = result_data.get("dataList", [])
+
+    items = []
+    for stock in data_list:
+        code = stock.get("SECURITY_CODE", "")
+        name = stock.get("SECURITY_SHORT_NAME")
+        if code:
+            items.append(ExtractItem(code=code, name=name, confidence="high"))
+
+    codes = [i.code for i in items]
+    return ExtractFromImageResponse(codes=codes, items=items, raw_text=None)
 
 
 @router.get(
