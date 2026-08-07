@@ -18,6 +18,7 @@
 5. GuosenFetcher (Priority 2) - 国信证券 API
 6. BaostockFetcher (Priority 3) - 来自 baostock 库
 7. YfinanceFetcher (Priority 4) - 来自 yfinance 库
+8. TencentFetcher (Priority 5) - 腾讯直连日 K 最终兜底
 
 【未配置 TUSHARE_TOKEN 时】
 1. EfinanceFetcher (Priority 0) - 最高优先级，来自 efinance 库
@@ -27,7 +28,8 @@
 5. TushareFetcher (Priority 2) - 来自 tushare 库（不可用）
 6. BaostockFetcher (Priority 3) - 来自 baostock 库
 7. YfinanceFetcher (Priority 4) - 来自 yfinance 库
-8. LongbridgeFetcher (Priority 5) - 长桥 OpenAPI（美股/港股兜底）
+8. TencentFetcher (Priority 5) - 腾讯直连日 K 最终兜底
+9. LongbridgeFetcher (Priority 5) - 长桥 OpenAPI（美股/港股兜底，与 Tencent 市场不重叠）
 
 提示：优先级数字越小越优先，同优先级按初始化顺序排列
 """
