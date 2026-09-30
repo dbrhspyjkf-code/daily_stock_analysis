@@ -57,7 +57,7 @@ Go to your forked repo → `Settings` → `Secrets and variables` → `Actions` 
 
 | Secret Name | Description | Required |
 |------------|------|:----:|
-| `ANSPIRE_API_KEYS` | [Anspire](https://open.anspire.cn/?share_code=QFBC0FYC) API key, one key for popular LLMs and Chinese-optimized web search with free quota for this project | Recommended |
+| `ANSPIRE_API_KEYS` | [Anspire](https://open.anspire.cn/dsa?share_code=QFBC0FYC) API key, one key for popular LLMs and Chinese-optimized web search with free quota for this project | Recommended |
 | `AIHUBMIX_KEY` | [AIHubMix](https://inferera.com/?aff=CfMq) API key, one key for multiple model families and a 10% top-up discount for this project | Recommended |
 | `GEMINI_API_KEY` | Get free key from [Google AI Studio](https://aistudio.google.com/) | Optional |
 | `ANTHROPIC_API_KEY` | Anthropic Claude API Key | Optional |
@@ -151,7 +151,7 @@ Go to your forked repo → `Settings` → `Secrets and variables` → `Actions` 
 |------------|------|:----:|
 | `STOCK_LIST` | Watchlist codes, e.g., `600519,300750,002594,7203.T,005930.KS`; English commas are recommended, while pasted Chinese commas, enumeration commas, semicolons, spaces, and newlines are recognized and normalized to English commas | ✅ |
 | `ANSPIRE_API_KEYS` | [Anspire AI Search](https://aisearch.anspire.cn/) optimized for Chinese content; the same key can also be used for Anspire LLM fallback scenarios (example model: `Doubao-Seed-2.0-lite`) | Recommended |
-| `SERPAPI_API_KEYS` | [SerpAPI](https://serpapi.com/baidu-search-api?utm_source=github_daily_stock_analysis) search-engine results for realtime financial news | Recommended |
+| `SERPAPI_API_KEYS` | [SerpAPI](https://serpapi.com/github-daily-stock-analysis) search-engine results for realtime financial news | Recommended |
 | `TAVILY_API_KEYS` | [Tavily](https://tavily.com/) Search API (for news search) | Optional |
 | `BOCHA_API_KEYS` | [Bocha Search](https://open.bocha.cn/) Web Search API (Chinese search optimized, supports AI summaries, multiple keys comma-separated) | Optional |
 | `BRAVE_API_KEYS` | [Brave Search](https://brave.com/search/api/) API (privacy-first, US-stock news enrichment, comma-separated for multiple keys) | Optional |
@@ -236,7 +236,7 @@ Default schedule: Every weekday at **18:00 (Beijing Time)** automatic execution.
 | `LITELLM_CONFIG` | Advanced model routing YAML path (expert use) | - | No |
 | `LLM_USAGE_HMAC_SECRET` | Secret for LLM usage telemetry message HMACs; leave empty to use a generated local data-dir secret file | - | No |
 | `LLM_USAGE_HMAC_KEY_VERSION` | Version label for the LLM usage HMAC key; update it when rotating the secret | `local-v1` | No |
-| `ANSPIRE_API_KEYS` | [Anspire](https://open.anspire.cn/?share_code=QFBC0FYC) API key, one key for the LLM gateway and search | - | Optional |
+| `ANSPIRE_API_KEYS` | [Anspire](https://open.anspire.cn/dsa?share_code=QFBC0FYC) API key, one key for the LLM gateway and search | - | Optional |
 | `AIHUBMIX_KEY` | [AIHubMix](https://inferera.com/?aff=CfMq) API key, one key for multiple model families | - | Optional |
 | `GEMINI_API_KEY` | Google Gemini API Key | - | Optional |
 | `GEMINI_MODEL` | Primary model name (legacy, `LITELLM_MODEL` preferred) | `gemini-3.1-pro-preview` | No |
@@ -417,10 +417,13 @@ For the notification baseline, diagnostics, and deployment notes, see [Notificat
 | `SCHEDULE_TIME` | Scheduled execution time | `18:00` |
 | `SCHEDULE_TIMES` | Multiple scheduled execution times, comma-separated; falls back to `SCHEDULE_TIME` when empty | empty |
 | `DSA_RUNTIME_SCHEDULER_TIMEOUT_SECONDS` | Hard timeout in seconds for each Web/API runtime scheduler analysis (minimum 60); the isolated analysis process is terminated on timeout so later runs can continue | `2700` |
+| `DSA_TIMEOUT_PARTIAL_NOTIFY` | **Default on (behavior change):** after a hard timeout, send a partial notification for analyses already saved to history; previously timeout sent no per-stock push. When `false`, structured `last_error` is still recorded but no push is sent | `true` |
 | `SCHEDULE_RUN_IMMEDIATELY` | Run once immediately when scheduler mode starts; when unset it keeps following the legacy `RUN_IMMEDIATELY` runtime override | `true` |
 | `RUN_IMMEDIATELY` | Run once immediately for non-scheduler startup; also acts as the legacy fallback when `SCHEDULE_RUN_IMMEDIATELY` is unset | `true` |
 | `LOG_DIR` | Log directory | `./logs` |
 | `SAVE_CONTEXT_SNAPSHOT` | Persist analysis-history `context_snapshot`. When false, new history records do not save enhanced_context, market_phase_summary, AnalysisContextPack overview, or diagnostic snapshots, but current-run prompt summaries remain enabled | `true` |
+
+> Timeout partial-delivery ops: a notification-channel exception is logged (`Partial timeout notification failed`) and skipped; it is not re-raised and cannot keep `status().running` true (notify runs on a daemon thread after the analysis lock is released). Storage import / collect failures also fail open: `status().last_error` may stay at the baseline `timed out after Ns` string, or be enriched to `completed=0`, which is indistinguishable from “nothing was saved”. Grep `Failed to collect completed analyses after timeout`, `Timeout partial delivery failed open`, and `Partial timeout notification failed`. After the first release, watch notification volume; set `DSA_TIMEOUT_PARTIAL_NOTIFY=false` to disable pushes.
 
 > Behavior notes:
 > - When `TICKFLOW_API_KEY` is configured, TickFlow is instantiated as an optional A-share daily K-line data source and CN market-review enhancer. `TICKFLOW_PRIORITY` only affects the generic A-share daily K-line/provider fallback chain. Realtime quote priority is controlled separately by `REALTIME_SOURCE_PRIORITY`; TickFlow realtime quotes are used only when that list explicitly includes `tickflow`, and any source listed before `tickflow` is tried first.
@@ -1308,7 +1311,7 @@ LITELLM_FALLBACK_MODELS=anthropic/claude-sonnet-4-6,openai/gpt-5.4-mini
 
 > ⚠️ `LITELLM_MODEL` must include provider prefix (e.g. `gemini/`, `anthropic/`, `openai/`). Legacy `GEMINI_MODEL` (no prefix) is only used when `LITELLM_MODEL` is not set.
 
-**Vision model (image stock code extraction)**: See [LLM Config Guide - Vision](LLM_CONFIG_GUIDE_EN.md#41-vision-model-image-stock-code-extraction).
+**Vision model (image stock code extraction)**: See [LLM Config Guide - Vision](LLM_CONFIG_GUIDE_EN.md#advanced-feature-vision-model-config).
 
 ### Debug Mode
 
